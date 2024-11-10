@@ -1,0 +1,730 @@
+#NORMALIZATION
+
+import csv
+
+a=[]
+b=[]
+
+with open("./data.csv",'r') as file:
+    reader=csv.reader(file)
+    next(reader)
+    for row in reader:
+        roll_no=int(row[0])
+        mark=float(row[1])
+        a.append(roll_no)
+        b.append(mark)
+
+def min_max(marks):
+    max_val= max(marks)
+    min_val= min(marks)
+    new_min=int(input("enter Min for min max norm"))
+    new_max=int(input("enter Max for min max norm"))
+    return[(((mark-min_val)/(max_val-min_val))*(new_max-new_min)+new_min) for mark in marks]
+
+def zscore(marks):
+    mean=sum(marks)/len(marks)
+    vari=sum((mark-mean)**2 for mark in marks)/len(marks)
+    std_v=vari**.5
+    return[((mark-mean)/std_v) for mark in marks]
+
+min_max_marks= min_max(b)
+zscore_marks= zscore(b)
+
+print("Roll No\tOriginal Marks\tMin-Max Normalized\tZ-Score Normalized")
+for i in range(len(a)):
+    print(f"{a[i]}\t{b[i]:.2f}\t\t{min_max_marks[i]:.2f}\t\t\t{zscore_marks[i]:.2f}")
+
+with open("./normalized_dat.csv",'w',newline='') as file:
+    writer=csv.writer(file)
+    writer.writerow(["roll_no" , "marks" ,"min_max", "zscore"])
+    for i in range(len(a)):
+        writer.writerow([a[i],b[i],min_max_marks[i],zscore_marks[i]])
+
+    
+
+#BINNING
+
+
+import csv
+import numpy as np
+
+def read_csv_data(file_path):
+    data = []
+    with open(file_path, mode='r') as file:
+        csv_reader = csv.reader(file)
+        next(csv_reader)  
+        for row in csv_reader:
+            data.append(float(row[1]))  
+    return data
+
+def create_bins(data, bin_size):
+    bins = []
+    for i in range(0, len(data), bin_size):
+        bin = data[i:i + bin_size]  
+        bins.append(bin)  
+    return bins
+
+def binning_by_mean(bins):
+    smoothed_data = []
+    for bin in bins:
+        mean_value = sum(bin) / len(bin)
+        smoothed_data.extend([mean_value] * len(bin))  
+    return smoothed_data
+
+def binning_by_median(bins):
+    smoothed_data = []
+    for bin in bins:
+        median_value = sorted(bin)[len(bin) // 2]  
+        smoothed_data.extend([median_value] * len(bin))  
+    return smoothed_data
+
+def binning_by_boundaries(bins):
+    smoothed_data = []
+    for bin in bins:
+        min_value = min(bin)
+        max_value = max(bin)
+        smoothed_bin = []
+        for value in bin:
+            if abs(value - min_value) < abs(value - max_value):
+                smoothed_bin.append(min_value)  
+            else:
+                smoothed_bin.append(max_value) 
+        smoothed_data.extend(smoothed_bin)
+    return smoothed_data
+
+def detect_outliers(data):
+    Q1 = np.percentile(data, 25)
+    Q3 = np.percentile(data, 75)
+    IQR = Q3 - Q1
+    lower_bound = Q1 - 1.5 * IQR
+    upper_bound = Q3 + 1.5 * IQR
+    outliers = [x for x in data if x < lower_bound or x > upper_bound]
+    return outliers, lower_bound, upper_bound
+
+def binning_data(file_path, bin_size):
+    data = read_csv_data(file_path)
+    data.sort()  
+    bins = create_bins(data, bin_size)
+    mean_smoothed = binning_by_mean(bins)
+    median_smoothed = binning_by_median(bins)
+    boundary_smoothed = binning_by_boundaries(bins)
+    print("\nOriginal Data:", data)
+    print("Bins:", bins)
+    print("Binning by Mean:", mean_smoothed)
+    print("Binning by Median:", median_smoothed)
+    print("Binning by Boundaries:", boundary_smoothed)
+
+# Example usage:
+file_path = r'C:\Users\bhilw\OneDrive\Documents\DM\iris.csv'
+bin_size = int(input('Enter bin size: '))
+binning_data(file_path, bin_size)
+
+
+
+#INFO GAIN
+
+
+
+
+import csv
+import math
+
+def read_csv(file_path):
+    with open(file_path, mode='r') as file:
+        csv_reader = csv.reader(file)
+        next(csv_reader)  
+        attributes = []
+        labels = []
+        for row in csv_reader:
+            attributes.append(row[:-1])  
+            labels.append(row[-1]) 
+    return attributes, labels
+def calculate_entropy(labels):
+    yes_count = labels.count('yes')
+    no_count = labels.count('no')
+    total_count = len(labels)
+    if yes_count == 0 or no_count == 0:
+        return 0
+    p_yes = yes_count / total_count
+    p_no = no_count / total_count
+    entropy = 0
+    if p_yes > 0:
+        entropy -= p_yes * math.log2(p_yes)
+    if p_no > 0:
+        entropy -= p_no * math.log2(p_no)
+    return entropy
+def info_gain(attribute_values, labels):
+    total_entropy = calculate_entropy(labels)
+    total_length = len(labels)
+    
+    unique_values = set(attribute_values)
+    weighted_entropy = 0
+    
+    for value in unique_values:
+        subset_labels = [labels[i] for i in range(total_length) if attribute_values[i] == value]
+        subset_entropy = calculate_entropy(subset_labels)
+        weighted_entropy += (len(subset_labels) / total_length) * subset_entropy
+    
+    return total_entropy - weighted_entropyQA
+def outp(file_path):
+    attributes, labels = read_csv(file_path)
+    outlook_values = [row[1] for row in attributes]
+    temperature_values = [row[2] for row in attributes]
+    humidity_values = [row[3] for row in attributes]
+    wind_values = [row[4] for row in attributes]
+    gain_outlook = info_gain(outlook_values, labels)
+    gain_temperature = info_gain(temperature_values, labels)
+    gain_humidity = info_gain(humidity_values, labels)
+    gain_wind = info_gain(wind_values, labels)
+    print(f"Information Gain for Outlook: {gain_outlook:.4f}")
+    print(f"Information Gain for Temperature: {gain_temperature:.4f}")
+    print(f"Information Gain for Humidity: {gain_humidity:.4f}")
+    print(f"Information Gain for Wind: {gain_wind:.4f}")
+file_path = "data.csv"
+outp(file_path)
+
+
+
+#t_wt
+
+import csv
+
+def read_csv_data(file_path):
+    data = []
+    with open(file_path, mode='r') as file:
+        csv_reader = csv.reader(file)
+        next(csv_reader)
+        for row in csv_reader:
+            region = row[0]
+            item_a = int(row[1])
+            item_b = int(row[2])
+            data.append({"region": region, "item_a": item_a, "item_b": item_b})
+    return data
+
+def calculate_weights(data):
+    total_item_a = sum(row["item_a"] for row in data)
+    total_item_b = sum(row["item_b"] for row in data)
+    total_count = total_item_a + total_item_b
+
+    results = []
+    for row in data:
+        region = row["region"]
+        item_a = row["item_a"]
+        item_b = row["item_b"]
+        total_region = item_a + item_b
+        t_weight_a = (item_a / total_region) * 100 if total_region > 0 else 0
+        t_weight_b = (item_b / total_region) * 100 if total_region > 0 else 0
+        d_weight_a = (item_a / total_count) * 100 if item_a > 0 else 0
+        d_weight_b = (item_b / total_count ) * 100 if item_b > 0 else 0
+
+        results.append((region, item_a, t_weight_a, d_weight_a, item_b, t_weight_b, d_weight_b))
+    
+    return results, total_item_a, total_item_b
+
+def print_results(results, total_item_a, total_item_b):
+    for row in results:
+        print(f"Region: {row[0]}, Item A Count: {row[1]}, T Weight A: {row[2]:.2f}%, D Weight A: {row[3]:.2f}%, "
+              f"Item B Count: {row[4]}, T Weight B: {row[5]:.2f}%, D Weight B: {row[6]:.2f}%")
+    
+    print(f"Total Item A Count: {total_item_a}, Total Item B Count: {total_item_b}")
+
+def main(file_path):
+    data = read_csv_data(file_path)
+    results, total_item_a, total_item_b = calculate_weights(data)
+    print_results(results, total_item_a, total_item_b)
+
+if __name__ == "__main__":
+    input_file_path = r'C:\Users\bhilw\OneDrive\Documents\DM\5_twt_dwt\data.csv'
+    main(input_file_path)
+
+
+#5_no-summary
+
+
+import csv
+
+sepal_length = []
+file_path = r'C:\Users\bhilw\OneDrive\Documents\DM\heart.csv' 
+
+with open(file_path, 'r') as csvfile:
+    csvreader = csv.DictReader(csvfile)
+    for row in csvreader:
+        sepal_length.append(float(row['chol'])) 
+
+def calculate_quartiles(data):
+    data = sorted(data)
+    n = len(data)
+    Q2 = data[n//2] if n % 2 != 0 else (data[n//2 - 1] + data[n//2]) / 2
+    Q1 = data[n//4] if n % 2 != 0 else (data[n//4 - 1] + data[n//4]) / 2
+    Q3 = data[(3*n)//4] if n % 2 != 0 else (data[(3*n)//4 - 1] + data[(3*n)//4]) / 2
+    return Q1, Q2, Q3
+
+Q1_len, Q2_len, Q3_len = calculate_quartiles(sepal_length)
+IQR_len = Q3_len - Q1_len
+lower_bound_len = Q1_len - 1.5 * IQR_len
+upper_bound_len = Q3_len + 1.5 * IQR_len
+outliers_len = [x for x in sepal_length if x < lower_bound_len or x > upper_bound_len]
+print(f" Q1: {Q1_len}, Median (Q2): {Q2_len}, Q3: {Q3_len}")
+print(f"IQR: {IQR_len}")
+print(f"Lower Bound for outliers: {lower_bound_len}")
+print(f"Upper Bound for outliers: {upper_bound_len}")
+print(f"Outliers: {outliers_len}")
+
+
+#ASR
+
+
+import csv
+def read_transactions(csv_file):
+    transactions = []
+    with open(csv_file, mode='r') as file:
+        csv_reader = csv.reader(file)
+        next(csv_reader)  
+        for row in csv_reader:
+            valid_items = [item for item in row[1:] if item]
+            transactions.append(valid_items)  
+    return transactions
+def generate_combinations(items, n):
+    if n == 0:
+        return [[]]
+    if len(items) < n:
+        return []
+    if len(items) == n:
+        return [items]
+    result = []
+    for i in range(len(items)):
+        first = items[i:i+1]
+        remaining = generate_combinations(items[i+1:], n-1)
+        for comb in remaining:
+            result.append(first + comb)
+    return result
+def calculate_support(itemset, transactions):
+    count = 0
+    for transaction in transactions:
+        if all(item in transaction for item in itemset):
+            count += 1
+    support = count / len(transactions)
+    return support
+def generate_rules(frequent_itemsets, transactions):
+    rules = []
+    for itemset in frequent_itemsets:
+        if len(itemset) > 1:
+            for i in range(1, len(itemset)):
+                antecedents = generate_combinations(itemset, i)
+                for antecedent in antecedents:
+                    consequent = [item for item in itemset if item not in antecedent]
+                    antecedent_support = calculate_support(antecedent, transactions)
+                    rule_support = calculate_support(itemset, transactions)
+                    confidence = rule_support / antecedent_support if antecedent_support != 0 else 0
+                    rules.append({
+                        'antecedent': antecedent,
+                        'consequent': consequent,
+                        'support': rule_support,
+                        'confidence': confidence
+                    })
+    return rules
+def association_rule_mining(csv_file, min_support):
+    transactions = read_transactions(csv_file)
+    unique_items = list(set(item for transaction in transactions for item in transaction))
+    frequent_itemsets = []
+    for i in range(1, len(unique_items) + 1):
+        combinations = generate_combinations(unique_items, i)
+        for itemset in combinations:
+            support = calculate_support(itemset, transactions)
+            if support >= min_support:
+                frequent_itemsets.append(itemset)
+    rules = generate_rules(frequent_itemsets, transactions)
+    print("\nFrequent Itemsets with Support:")
+    for itemset in frequent_itemsets:
+        support = calculate_support(itemset, transactions)
+        print(f"{itemset}: {support:.2f}")
+    print("\nAssociation Rules with Confidence:")
+    for rule in rules:
+        antecedent = ', '.join(rule['antecedent'])
+        consequent = ', '.join(rule['consequent'])
+        print(f"Rule: {antecedent} -> {consequent} | Support: {rule['support']:.2f}, Confidence: {rule['confidence']:.2f}")
+csv_file = r'C:\Users\bhilw\OneDrive\Documents\DM\7_association_rule\data.csv'
+min_support = float(input("Enter the minimum support: "))
+association_rule_mining(csv_file, min_support)
+
+
+#correlation
+
+
+ import csv
+import math
+
+def read_csv(file_path):
+    x = []
+    y = []
+    with open(file_path, mode='r') as file:
+        csv_reader = csv.reader(file)
+        next(csv_reader)  
+        for row in csv_reader:
+            x.append(float(row[0])) 
+            y.append(float(row[1]))  
+    return x, y
+
+def pearson_correlation(x, y):
+    n = len(x)
+    sum_x = sum(x)
+    sum_y = sum(y)
+    sum_x_sq = sum([i**2 for i in x])
+    sum_y_sq = sum([i**2 for i in y])
+    sum_xy = sum([x[i] * y[i] for i in range(n)])
+    
+    numerator = sum_xy - (sum_x * sum_y / n)
+    denominator = math.sqrt((sum_x_sq - sum_x**2 / n) * (sum_y_sq - sum_y**2 / n))
+    
+    if denominator == 0:
+        return 0
+    return numerator / denominator
+
+csv_file = r'C:\Users\bhilw\OneDrive\Documents\DM\iris.csv'
+x, y = read_csv(csv_file)
+
+correlation = pearson_correlation(x, y)
+print(f"Pearson Correlation: {correlation}")
+
+
+#clustering
+
+
+import csv
+
+def read_points_from_csv(csv_file):
+    points = []
+    with open(csv_file, mode='r') as file:
+        csv_reader = csv.reader(file)
+        next(csv_reader)  
+        for row in csv_reader:
+            points.append([float(row[0]), float(row[1]), float(row[2])]) 
+    return points
+
+def compute_cluster_center(points):
+    num_points = len(points)
+    if num_points == 0:
+        return (0, 0, 0)
+    center_x = sum(point[0] for point in points) / num_points
+    center_y = sum(point[1] for point in points) / num_points
+    center_z = sum(point[2] for point in points) / num_points
+    return (center_x, center_y, center_z)
+def squared_euclidean_distance(point1, point2):
+    return (point1[0] - point2[0]) ** 2 + (point1[1] - point2[1]) ** 2 + (point1[2] - point2[2]) ** 2
+csv_file = r'C:\Users\bhilw\OneDrive\Documents\DM\cluster_data.csv' 
+points = read_points_from_csv(csv_file)
+cluster_center = compute_cluster_center(points)
+print(f"Cluster Center: {cluster_center}")
+distances = []
+num_points = len(points)
+for i in range(num_points):
+    row = []
+    for j in range(num_points):
+        if j >= i: 
+            distance = squared_euclidean_distance(points[i], points[j]) ** 0.5  
+            row.append(distance)
+        else:
+            row.append(None) 
+    distances.append(row)
+print("\nUpper Triangular Distance Matrix:")
+for i in range(num_points):
+    for j in range(num_points):
+        if j >= i:
+            print(f"{distances[i][j]:6.2f}", end=" ")
+        else:
+            print("      ", end=" ")
+    print()
+
+
+#Aglomerative heirarchial clustering 
+
+
+import csv
+def read_points_from_csv(csv_file):
+    points = []
+    with open(csv_file, mode='r') as file:
+        csv_reader = csv.reader(file)
+        next(csv_reader)
+        for row in csv_reader:
+            points.append([float(row[0]), float(row[1]), float(row[2])])
+    return points
+def squared_euclidean_distance(point1, point2):
+    return (point1[0] - point2[0]) ** 2 + (point1[1] - point2[1]) ** 2 + (point1[2] - point2[2]) ** 2
+def find_min_distance(distances, clusters):
+    min_distance = float('inf')
+    pair = (0, 0)
+    for i in range(len(clusters)):
+        for j in range(i + 1, len(clusters)):
+            if distances[i][j] < min_distance:
+                min_distance = distances[i][j]
+                pair = (i, j)
+    return pair
+def update_distance_matrix(distances, clusters, new_cluster):
+    for i in range(len(clusters)):
+        if i != new_cluster:
+            distances[i][new_cluster] = min(distances[i][clusters[0]], distances[i][clusters[1]])
+    return distances
+csv_file = 'points_3d.csv'
+points = read_points_from_csv(csv_file)
+num_points = len(points)
+distances = [[0] * num_points for _ in range(num_points)]
+
+for i in range(num_points):
+    for j in range(i + 1, num_points):
+        distances[i][j] = squared_euclidean_distance(points[i], points[j]) ** 0.5
+        distances[j][i] = distances[i][j]
+
+clusters = [[i] for i in range(num_points)]
+iteration = 1
+while len(clusters) > 1:
+    pair = find_min_distance(distances, clusters)
+    cluster1, cluster2 = pair
+    new_cluster = clusters[cluster1] + clusters[cluster2]
+    clusters.append(new_cluster)
+    clusters.pop(max(cluster1, cluster2))
+    clusters.pop(min(cluster1, cluster2))
+    distances = update_distance_matrix(distances, [cluster1, cluster2], len(clusters) - 1)
+    print(f"Iteration {iteration}: Merged clusters {cluster1} and {cluster2} into {len(clusters)-1}")
+    print(f"Current Clusters: {clusters}")
+    iteration += 1
+print("\nFinal Clusters:")
+for cluster in clusters:
+    print(f"Cluster: {cluster}")
+print("\nUpper Triangular Distance Matrix:")
+for i in range(num_points):
+    for j in range(num_points):
+        if j >= i:
+            print(f"{distances[i][j]:6.2f}", end=" ")
+        else:
+            print("      ", end=" ")
+    print()
+
+#gain_gini
+
+
+import csv
+import math
+def read_csv(file_name):
+    data = []
+    with open(file_name, 'r') as file:
+        csv_reader = csv.reader(file)
+        headers = next(csv_reader)  
+        for row in csv_reader:
+            data.append(row)
+    return headers, data
+def count_labels(data):
+    label_counts = {}
+    for row in data:
+        label = row[-1]  
+        if label in label_counts:
+            label_counts[label] += 1
+        else:
+            label_counts[label] = 1
+    return label_counts
+def calculate_entropy(data):
+    total = len(data)
+    label_counts = count_labels(data)
+    entropy = 0.0
+    for label in label_counts:
+        prob = label_counts[label] / total
+        entropy -= prob * math.log2(prob)  
+    return entropy
+def calculate_gini_index(data):
+    total = len(data)
+    label_counts = count_labels(data)
+    gini = 1.0
+    for label in label_counts:
+        prob = label_counts[label] / total
+        gini -= prob ** 2 
+    return gini
+def split_data_by_attribute(data, attribute_index):
+    subsets = {}
+    for row in data:
+        attribute_value = row[attribute_index]
+        if attribute_value in subsets:
+            subsets[attribute_value].append(row)
+        else:
+            subsets[attribute_value] = [row]
+    return subsets
+def information_gain(data, attribute_index):
+    total_entropy = calculate_entropy(data)
+    subsets = split_data_by_attribute(data, attribute_index)
+    weighted_entropy = 0.0
+    total_instances = len(data)
+    for subset in subsets.values():
+        prob = len(subset) / total_instances
+        weighted_entropy += prob * calculate_entropy(subset)
+
+    gain = total_entropy - weighted_entropy
+    return gain
+def gini_index_for_attribute(data, attribute_index):
+    subsets = split_data_by_attribute(data, attribute_index)
+    weighted_gini = 0.0
+    total_instances = len(data)
+    for subset in subsets.values():
+        prob = len(subset) / total_instances
+        weighted_gini += prob * calculate_gini_index(subset)
+
+    return weighted_gini
+headers, data = read_csv(r'C:\Users\bhilw\OneDrive\Documents\DM\12_Gain_gini\data.csv')
+print("Attribute Information Gain and Gini Index:")
+for i in range(len(headers) - 1):  
+    print(f"\nAttribute: {headers[i]}")
+    gain = information_gain(data, i)
+    gini = gini_index_for_attribute(data, i)
+    print(f"Information Gain: {gain}")
+    print(f"Gini Index: {gini}")
+
+
+#bayes_classifier
+
+
+import csv
+import math
+
+def read_data_from_csv(csv_file):
+    data = []
+    with open(csv_file, mode='r') as file:
+        csv_reader = csv.reader(file)
+        next(csv_reader)
+        for row in csv_reader:
+            data.append(row)
+    return data
+
+def calculate_prior_probabilities(data):
+    total_samples = len(data)
+    class_counts = {}
+    for row in data:
+        label = row[-1]
+        class_counts[label] = class_counts.get(label, 0) + 1
+    prior_probabilities = {cls: count / total_samples for cls, count in class_counts.items()}
+    return prior_probabilities
+
+def calculate_mean_variance(data, class_counts, numerical_features):
+    feature_stats = {}
+    for cls in class_counts:
+        feature_stats[cls] = []
+    for row in data:
+        features = [float(row[i]) if i in numerical_features else row[i] for i in range(len(row) - 1)]
+        label = row[-1]
+        feature_stats[label].append(features)
+    for cls in feature_stats:
+        features = feature_stats[cls]
+        means = []
+        variances = []
+        for i in range(len(features[0])):
+            if isinstance(features[0][i], float):
+                mean = sum(f[i] for f in features) / len(features)
+                variance = sum((f[i] - mean) ** 2 for f in features) / len(features)
+                means.append(mean)
+                variances.append(variance)
+            else:
+                means.append(None)
+                variances.append(None)
+        feature_stats[cls] = (means, variances)
+    return feature_stats
+
+def gaussian_probability(x, mean, variance):
+    if variance == 0:
+        return 0
+    exponent = math.exp(-((x - mean) ** 2) / (2 * variance))
+    return (1 / (math.sqrt(2 * math.pi * variance))) * exponent
+
+def calculate_categorical_probabilities(data, class_counts, categorical_features):
+    categorical_counts = {}
+    for cls in class_counts:
+        categorical_counts[cls] = {feature: {} for feature in categorical_features}
+    for row in data:
+        label = row[-1]
+        for feature_index in categorical_features:
+            feature_value = row[feature_index]
+            if feature_value not in categorical_counts[label][feature_index]:
+                categorical_counts[label][feature_index][feature_value] = 0
+            categorical_counts[label][feature_index][feature_value] += 1
+    return categorical_counts
+
+def predict(test_sample, prior_probabilities, feature_stats, categorical_counts, categorical_features):
+    probabilities = {}
+    for cls in prior_probabilities:
+        prob = prior_probabilities[cls]
+        for i in range(len(test_sample)):
+            if i in categorical_features:
+                feature_value = test_sample[i]
+                feature_prob = (categorical_counts[cls][i].get(feature_value, 0) + 1) / (sum(categorical_counts[cls][i].values()) + len(categorical_counts[cls][i]))
+                prob *= feature_prob
+            else:
+                mean, variance = feature_stats[cls][0][i], feature_stats[cls][1][i]
+                feature_prob = gaussian_probability(float(test_sample[i]), mean, variance)
+                prob *= feature_prob
+        
+        probabilities[cls] = prob
+    
+    total_prob = sum(probabilities.values())
+    for cls in probabilities:
+        probabilities[cls] /= total_prob  # Normalize probabilities
+    
+    best_class = max(probabilities, key=probabilities.get)
+    return best_class, probabilities
+
+csv_file = 'C:\\Users\\bhilw\\OneDrive\\Documents\\DM\\playdata.csv'
+data = read_data_from_csv(csv_file)
+prior_probabilities = calculate_prior_probabilities(data)
+
+numerical_features = [1, 2]  
+categorical_features = [0, 3]  
+feature_stats = calculate_mean_variance(data, prior_probabilities, numerical_features)
+categorical_counts = calculate_categorical_probabilities(data, prior_probabilities, categorical_features)
+
+outlook = input("Enter Outlook (sunny, overcast, rain): ")
+temperature = float(input("Enter Temperature (e.g., 75.0): "))
+humidity = float(input("Enter Humidity (e.g., 70.0): "))
+windy = input("Is it Windy? (TRUE/FALSE): ")
+
+test_sample = [outlook, temperature, humidity, windy]
+predicted_class, probabilities = predict(test_sample, prior_probabilities, feature_stats, categorical_counts, categorical_features)
+
+print(f"Test sample {test_sample} is predicted as: {predicted_class}")
+print("Probabilities for each class:")
+for cls, prob in probabilities.items():
+    print(f"{cls}: {prob:.4f}")
+
+#linear regression
+
+
+import csv
+
+def read_data_from_csv(csv_file):
+    x_values = []
+    y_values = []
+    with open(csv_file, mode='r') as file:
+        csv_reader = csv.reader(file)
+        next(csv_reader)
+        for row in csv_reader:
+            x_values.append(float(row[0]))
+            y_values.append(float(row[1]))
+    return x_values, y_values
+
+def calculate_coefficients(x_values, y_values):
+    n = len(y_values)
+    x_mean = sum(x_values) / n
+    y_mean = sum(y_values) / n
+
+    numerator = sum((x_values[i] - x_mean) * (y_values[i] - y_mean) for i in range(n))
+    denominator = sum((x_values[i] - x_mean) ** 2 for i in range(n))
+    
+    b1 = numerator / denominator
+    b0 = y_mean - b1 * x_mean
+    return b0, b1
+
+def main():
+    csv_file = r'C:\Users\bhilw\OneDrive\Documents\DM\14_linear_regression\data.csv'
+    x_values, y_values = read_data_from_csv(csv_file)
+    b0, b1 = calculate_coefficients(x_values, y_values)
+    print(f"Slope (b1): {b1:.4f}")
+    print(f"Intercept (b0): {b0:.4f}")
+    print(f"Linear Equation: y = {b0:.4f} + {b1:.4f} * x")
+
+if __name__ == "__main__":
+    main()
+
+
